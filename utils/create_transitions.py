@@ -37,10 +37,6 @@ class Transitions:
         arr = arrivals.pop(0)
         cur_dep = arr + departures.pop(0)
 
-        # debug
-        checkit = 1000
-        # --debug
-
         while len(trans) < self.iters:
             if arr<cur_dep and qsize<self.queue_length:
                 if qsize > 0:
@@ -49,25 +45,12 @@ class Transitions:
                 trans.append(('a', arr))
                 arr = arrivals.pop(0)
 
-                # debug
-                if len(trans)%checkit == 0: print(f'Still ok till {len(trans)}')
-                # --debug
-
             elif arr<cur_dep and qsize == self.queue_length:
-
-                # debug
-                print(f'Got blocked at {len(trans)}')
-                # --debug
-
                 trans.append(('a', arr))
                 arr = arrivals.pop(0)
                 continue
             elif arr >= cur_dep:
                 trans.append(('d', cur_dep))
-
-                # debug
-                if len(trans) % checkit == 0: print(f'Still ok till {len(trans)}')
-                # --debug
 
                 qsize -= 1
                 if qsize > 0:
@@ -85,10 +68,5 @@ class Transitions:
         arrivals_time = self.create_event_times(seq)
         seq_deps = np.random.exponential(1/mu,  self.iters)
         departures_intervals = [x*60 for x in seq_deps]
-
-        # debug
-        # arrivals_time = arrivals_time[:10000] + [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1,1.1,1.2,1.3] + arrivals_time[10000:50000] +  [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1,1.1,1.2,1.3] + arrivals_time[50000:]
-        # --debug
-
         transitions = self.set_transition_table(arrivals_time, departures_intervals)
         return transitions

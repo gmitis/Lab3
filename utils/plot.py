@@ -14,7 +14,7 @@ def plot_erg_prob(ergodic_prob):
 def plot_avg_cust(avg_cust):
     plt.plot([x for x in range(0, len(avg_cust))], avg_cust)
 
-    plt.title("Average Number of Customer in system")
+    plt.title("Average Number of Customers in system")
     plt.xlabel("1000 transitions")
     plt.ylabel("Avg")
     plt.show()
