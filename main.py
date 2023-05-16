@@ -3,8 +3,11 @@
 # TODO: (debug) fix simulation: values not correct
 
 import queue
+from functools import reduce
+
 from utils import plot as plt
 from utils import create_transitions as ct
+from utils import debug as dg
 
 lmd = [1, 5, 10]
 mu = 5
@@ -13,38 +16,35 @@ iters = 10000
 queue_length = 10
 
 
-# debugger
-def trace(i, qs, s, arr):
-    print(f'\nTransition: {i+1}\nSystem state: {qs}\nNext transition: {s}\nNumber of arrivals: {arr}\n')
-
-
 # k:= index of En
 # m := index that shows if we need to check for convergence
-def simulate(trans):
+def simulate(trans, Deb):
     q = queue.Queue()
-    Pn = [0] * queue_length
+    Pn = [0] * (queue_length+1)
     Pb = 0
-    En = [0] * (int(iters/1000))
+    En = [0] * (int(iters/100))
     Et = 0
     qs = 0
     iter = -1
-    empty_since = 0
+
+    prev_trans = 0
     arrivals = 0
 
     for i in trans:
         iter += 1
 
         # trace code for debugging
-        if iter < 30:
-            if i[0] == 'a': arrivals += 1
-            trace(iter, q.qsize(), trans[iter+1][0], arrivals)
+        # if iter < 30:
+        #     if i[0] == 'a': arrivals += 1
+        #     Deb.trace(iter, q.qsize(), trans[iter+1][0], arrivals)
+        # /trace code for debugging
 
         k = iter // 1000
         m = iter % 1000
 
         if i[0] == 'a' and qs < 10:
-            if qs == 0:
-                Pn[0] += i[1] - empty_since
+            Pn[qs] += i[1] - prev_trans
+            prev_trans = i[1]
             q.put(i[1])
             qs += 1
             En[k] += qs
@@ -52,22 +52,19 @@ def simulate(trans):
             Pb += 1
             En[k] += qs
         elif i[0] == 'd' and qs > 0:
-            if qs == 1:
-                empty_since = i[1]
-            wait_time = i[1] - q.get()
-            Pn[qs] = wait_time
+            Pn[qs] += i[1] - prev_trans
+            prev_trans = i[1]
             qs -= 1
             En[k] += qs
-            Et += wait_time
+            Et += i[1] - q.get()
 
         if m == 0:
-            En[k-1] /= 1000
             if k>1 and abs(En[k-1]-En[k-2])/En[k-2] < 0.00001:
                 break
 
-    print(f'Pn: {Pn}\nPb: {Pb}\nEn: {En}\nEt: {Et}\n')
-    Pn = list(map(lambda x: x/trans[iters][1], Pn))
-    return Pn, Pb/iters, En, Et
+    Pn = list(map(lambda x: x/trans[iters-1][1], Pn))
+    En = list(map(lambda x: x/1000, En))
+    return Pn, Pb/iters, En, Et/iters
 
 
 if __name__ == '__main__':
@@ -75,19 +72,14 @@ if __name__ == '__main__':
         Trans = ct.Transitions(seed, iters, queue_length)
         transitions = Trans.create_states(l, mu)
 
-        # debug
-        blk =0
-        a = 0
-        for x in transitions:
-            if x[0] == 'a':
-                a += 1
-                if a >= 11:
-                    blk += 1
-            else:
-                a = 0
-        print(f'Blocked {blk} times')
-        # --debug
+        # debug class
+        deb = dg.Debug(transitions)
 
-        ergodic_prob, p_blocking, avg_customers_in_system, avg_waiting_time = simulate(transitions)
-        plt.plot_erg_prob(ergodic_prob)
-        plt.plot_avg_cust(avg_customers_in_system)
+        ergodic_prob, p_blocking, avg_customers_in_system, avg_waiting_time = simulate(transitions, deb)
+
+        # debug
+        print(f'\nPn: {ergodic_prob}\nPb: {p_blocking}\nEn: {avg_customers_in_system}\nEt: {avg_waiting_time}\n')
+        # /debug
+
+        plt.plot_erg_prob(ergodic_prob, l)
+        plt.plot_avg_cust(avg_customers_in_system, l)
